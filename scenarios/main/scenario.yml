@@ -1,0 +1,177 @@
+$schema: https://specs.livecontracts.io/v0.2.0/scenario/schema.json#
+title: ILT main
+
+actors:
+  issuer:
+    title: Issuer
+    type: object
+    properties:
+      name:
+        type: string
+  license_holder:
+    title: License holder
+    type: object
+    properties:
+      name:
+        type: string
+
+assets:
+  license:
+    type: object
+    properties:
+      reference:
+        title: License No
+        type: string
+      material:
+        title: Shipment material
+        type: string
+      shipments:
+        title: Total number of shipments
+        type: integer
+      quantity:
+        title: Total quantity
+        type: float
+      period:
+        title: Intended period
+        type: object
+        properties:
+          from:
+            type: string
+            format: date
+          to:
+            type: string
+            format: date
+  available:
+    title: Available qualtities
+    type: object
+    properties:
+      shipments:
+        type: integer
+      quantity:
+        type: number
+  reserved:
+    title: Reserved qualtities
+    type: object
+    properties:
+      shipments:
+        type: integer
+        default: 0
+      quantity:
+        type: number
+        default: 0
+  spend:
+    title: Spend qualtities
+    type: object
+    properties:
+      shipments:
+        type: integer
+        default: 0
+      quantity:
+        type: number
+        default: 0
+
+actions:
+  issue:
+    actor: issuer
+    responses:
+      ok:
+        title: Issued new license
+        update:
+          - select: assets.license
+          - select: assets.available
+            projection: "{shipments: shipments, quantity: quantity}"
+          - select: actors.license_holder
+            projection: "{name: license_holder.name}"
+  verify_shipment:
+    $schema: https://ilt.livecontracts.io/schemas/verify_shipment/schema.json#
+    actor: issuer
+    default_response: approve
+    determine_response:
+      !if
+      condition:
+        !apply
+        input:
+          period: !ref assets.license.period
+          available: !ref assets.available
+          shipment: !ref current.response.data
+        #        query: (available.shipments > `0`) && (available.quantity >= shipment.quantity) && (period.from <= shipment.shipment_date) && (period.to >= shipment.shipment_date)
+        query: (available.shipments > `0`) && (available.quantity >= shipment.quantity)
+      then: approve
+      else: deny
+    responses:
+      approve:
+        display: always
+        title: !tpl Shipment '{{ current.response.data.reference }}' approved
+        update:
+          - select: assets.available
+            data:
+              !apply
+              input:
+                current: !ref assets.available
+                shipment: !ref current.response.data
+              query: "{shipments: current.shipments - `1`, quantity: current.quantity - shipment.quantity}"
+          - select: assets.reserved
+            data:
+              !apply
+              input:
+                current: !ref assets.reserved
+                shipment: !ref current.response.data
+              query: "{shipments: current.shipments +`1`, quantity: current.quantity + shipment.quantity}"
+      deny:
+        display: always
+        title: !tpl Shipment '{{ current.response.data.reference }}' denied
+  complete_shipment:
+    actor: issuer
+    responses:
+      ok:
+        title: !tpl Completed shipment '{{ current.response.data.reference }}'
+        display: always
+        update:
+          - select: assets.reserved
+            data:
+              !apply
+              input:
+                reserved: !ref assets.reserved
+                shipment: !ref current.response.data
+              query: "{ shipments: reserved.shipments - `1`, quantity: reserved.quantity - shipment.quantity }"
+          - select: assets.spend
+            data:
+              !apply
+              input:
+                spend: !ref assets.spend
+                shipment: !ref current.response.data
+              query: "{ shipments: spend.shipments + `1`, quantity: spend.quantity + shipment.received_quantity }"
+          - select: assets.available
+            data:
+              !apply
+              input:
+                available: !ref assets.available
+                shipment: !ref current.response.data
+              query: "{ shipments: available.shipments, quantity: available.quantity + (shipment.quantity - shipment.received_quantity) }"
+  revert_shipment:
+    actor: issuer
+    responses:
+      ok:
+        title: !tpl Cancelled shipment '{{ current.response.data.reference }}'
+        display: always
+        update:
+          - select: assets.reserved
+            data:
+              !apply
+              input: !ref assets
+              query: "{shipments: reserved.shipments - `1`, quantity: reserved.quantity - shipment.quantity}"
+          - select: assets.available
+            data:
+              !apply
+              input: !ref assets
+              query: "{shipments: available.shipments + `1`, quantity: available.quantity + shipment.quantity}"
+
+states:
+  initial:
+    action: issue
+    transition: live
+  live:
+    actions:
+      - verify_shipment
+      - complete_shipment
+      - revert_shipment

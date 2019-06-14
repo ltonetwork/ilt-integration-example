@@ -1,0 +1,296 @@
+{
+  "$schema": "https:\/\/specs.livecontracts.io\/v0.2.0\/scenario\/schema.json#",
+  "title": "ILT transport",
+  "actors": {
+    "issuer": {
+      "title": "Issuer",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "license_holder": {
+      "title": "License holder",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "transport": {
+      "title": "Transport company",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "recipient": {
+      "title": "Recipient \/ Treatment facility",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "processor": {
+      "title": "Processor \/ Treatment facility",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "assets": {
+    "license_process": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "chain": {
+          "type": "string"
+        }
+      }
+    },
+    "shipment": {
+      "type": "object",
+      "properties": {
+        "reference": {
+          "description": "Notification No",
+          "type": "string"
+        },
+        "material": {
+          "description": "Shipment material",
+          "type": "string"
+        },
+        "package_type": {
+          "description": "Package type",
+          "type": "string"
+        },
+        "shipment_date": {
+          "description": "Date when the shipment will take place",
+          "type": "string",
+          "format": "date"
+        },
+        "quantity": {
+          "description": "Intended quantity",
+          "type": "float"
+        },
+        "received_quantity": {
+          "description": "Actual quantity",
+          "type": "float"
+        }
+      }
+    }
+  },
+  "actions": {
+    "start": {
+      "$schema": null,
+      "actor": "license_holder",
+      "responses": {
+        "ok": {
+          "title": "Started new shipment process",
+          "update": [
+            {
+              "select": "name",
+              "data": {
+                "<tpl>": "Shipment {{ response.data.reference }}"
+              }
+            },
+            {
+              "select": "assets.shipment"
+            },
+            {
+              "select": "assets.license_process",
+              "projection": "license_process"
+            },
+            {
+              "select": "actors.transport",
+              "projection": "{ name: transport.name }"
+            },
+            {
+              "select": "actors.recipient",
+              "projection": "{ name: recipient.name }"
+            },
+            {
+              "select": "actors.processor",
+              "projection": "{ name: processor.name }"
+            }
+          ]
+        }
+      }
+    },
+    "verify": {
+      "$schema": "https:\/\/ilt.livecontracts.io\/schemas\/sync_license\/schema.json#",
+      "actor": "issuer",
+      "license_process": {
+        "<ref>": "assets.license_process"
+      },
+      "action": "verify_shipment",
+      "default_response": "approve",
+      "shipment": {
+        "<merge>": [
+          {
+            "id": {
+              "<ref>": "id"
+            }
+          },
+          {
+            "<ref>": "assets.shipment"
+          }
+        ]
+      },
+      "responses": {
+        "approve": {
+          "title": "Shipment approved",
+          "display": "always"
+        },
+        "deny": {
+          "title": "Shipment denied by license issuer",
+          "display": "always"
+        },
+        "ok": {
+          "title": "Pending",
+          "display": "none"
+        },
+        "error": {
+          "title": "Unexpected error when verifying shipment",
+          "display": "always"
+        }
+      }
+    },
+    "cancel": {
+      "actor": "license_holder",
+      "responses": {
+        "ok": {
+          "title": "Shipment cancelled"
+        }
+      }
+    },
+    "transport": {
+      "actor": "transport",
+      "responses": {
+        "ok": {
+          "title": "Shipment has started"
+        }
+      }
+    },
+    "receive": {
+      "actor": "recipient",
+      "responses": {
+        "ok": {
+          "title": "Shipment is received",
+          "update": {
+            "select": "assets.shipment.received_quantity",
+            "projection": "quantity"
+          }
+        }
+      }
+    },
+    "process": {
+      "actor": "processor",
+      "responses": {
+        "ok": {
+          "title": "Shipment has been processed"
+        }
+      }
+    },
+    "complete": {
+      "$schema": "https:\/\/ilt.livecontracts.io\/schemas\/sync_license\/schema.json#",
+      "actor": "issuer",
+      "license_process": {
+        "<ref>": "assets.license_process"
+      },
+      "action": "complete_shipment",
+      "shipment": {
+        "<ref>": "assets.shipment"
+      },
+      "responses": {
+        "ok": {
+          "title": "Completed process",
+          "display": "always"
+        }
+      }
+    },
+    "revert": {
+      "$schema": "https:\/\/ilt.livecontracts.io\/schemas\/sync_license\/schema.json#",
+      "actor": "issuer",
+      "license_process": {
+        "<ref>": "assets.license_process"
+      },
+      "action": "revert_shipment",
+      "shipment": {
+        "<ref>": "assets.shipment"
+      },
+      "responses": {
+        "ok": {
+          "title": "Completed process",
+          "display": "always"
+        }
+      }
+    }
+  },
+  "states": {
+    "initial": {
+      "action": "start",
+      "transition": "approval_required"
+    },
+    "approval_required": {
+      "action": "verify",
+      "transitions": [
+        {
+          "response": "approve",
+          "transition": "ready"
+        },
+        {
+          "response": "deny",
+          "transition": ":cancelled"
+        },
+        {
+          "response": "error",
+          "transition": ":failed"
+        }
+      ]
+    },
+    "ready": {
+      "actions": [
+        "transport",
+        "cancel"
+      ],
+      "transitions": [
+        {
+          "action": "transport",
+          "transition": "transporting"
+        },
+        {
+          "action": "cancel",
+          "transition": "cancelled"
+        }
+      ]
+    },
+    "transporting": {
+      "actions": "receive",
+      "transition": "received"
+    },
+    "received": {
+      "action": "process",
+      "transition": "processed"
+    },
+    "processed": {
+      "actions": "complete",
+      "transition": ":success"
+    },
+    "cancelled": {
+      "action": "revert",
+      "transition": ":cancelled"
+    }
+  }
+}
