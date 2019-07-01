@@ -44,7 +44,8 @@ const main = async () => {
     },
     license_holder: {
       name: 'Waste BV'
-    }
+    },
+    shipment_index: 50
   };
   chain = await iltHelper.initializeLicenseProcess(chain, processId, iltAccount, licenseHolderAccount, licenseInfo);
   try {
@@ -83,6 +84,10 @@ const main = async () => {
     },
     processor: {
       name: 'Storage BV'
+    },
+    notification: {
+      auth_token: "www.3cd308bf83f700b78fa56b68d4486d02fc3d5ee30e57",
+      url: "http://requestbin.fullcontact.com/1cubl1r1"
     }
   };
   chain = await iltHelper.initializeTransportProcess(chain, iltAccount, licenseHolderAccount, transportAccount, storageAccount, storageAccount, transportInfo, transportProcessId);

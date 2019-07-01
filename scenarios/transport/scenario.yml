@@ -64,6 +64,18 @@ assets:
       received_quantity:
         description: Actual quantity
         type: float
+      index:
+        description: Index determined by license
+        type: integer
+  notification:
+    type: object
+    properties:
+      url:
+        description: url to send the callback info to
+        type: string
+      auth_token:
+        description: token used to send the callback info
+        type: string
 
 actions:
   start:
@@ -84,6 +96,8 @@ actions:
           projection: "{ name: recipient.name }"
         - select: actors.processor
           projection: "{ name: processor.name }"
+        - select: assets.notification
+          projection: notification
   verify:
     $schema: https://ilt.livecontracts.io/schemas/sync_license/schema.json#
     actor: issuer
@@ -98,6 +112,9 @@ actions:
       approve:
         title: Shipment approved
         display: always
+        update:
+          select: assets.shipment.index
+          projection: shipment_index
       deny:
         title: Shipment denied by license issuer
         display: always
@@ -158,12 +175,12 @@ states:
   approval_required:
     action: verify
     transitions:
-    - response: approve
-      transition: ready
-    - response: deny
-      transition: :cancelled
-    - response: error
-      transition: :failed
+      - response: approve
+        transition: ready
+      - response: deny
+        transition: :cancelled
+      - response: error
+        transition: :failed
   ready:
     actions:
     - transport

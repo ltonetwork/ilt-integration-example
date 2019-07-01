@@ -1,0 +1,87 @@
+version: '3'
+  
+services:
+  mongo:
+    image: "mongo:3"
+    ports:
+      - 27747:27017
+    networks:
+      - lto
+
+  api-gateway:
+    container_name: api-gateway
+    image: legalthings/api-gateway:v0.1.8
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "3000:80"
+    networks:
+      - lto
+
+  legalflow:
+    image: legalthings/nginx
+    environment:
+      - PHP_HOST=legalflow-fpm
+    networks:
+      - lto
+    depends_on:
+      - legalflow-fpm
+
+  legalflow-fpm:
+    image: legalthings/workflow-engine:v0.2.0
+    environment:
+      - APPLICATION_ENV=docker.dev
+    volumes:
+      - ./config:/app/config/local
+    networks:
+      - lto
+    depends_on:
+      - mongo
+  
+  legalevents:
+    image: legalthings/nginx
+    environment:
+      - PHP_HOST=legalevents-fpm
+    networks:
+      - lto
+    depends_on:
+      - legalevents-fpm
+
+  legalevents-fpm:
+    image: legalthings/event-chain:v0.2.0
+    environment:
+      - APPLICATION_ENV=docker.dev-queue
+      - phpmemory_limit=512M
+    networks:
+      - lto
+    depends_on:
+      - mongo
+
+  rabbitmq:
+    image: legalthings/rabbitmq
+    networks:
+      - lto
+
+  event-queuer:
+    image: legalthings/event-dispatcher:v0.1.2
+    environment:
+      - NODE_ENV=lto
+    networks:
+      - lto
+    depends_on:
+      - mongo
+      - rabbitmq
+
+  event-dispatcher:
+    image: legalthings/event-dispatcher:v0.1.2
+    environment:
+      - NODE_ENV=lto
+    networks:
+      - lto
+    depends_on:
+      - mongo
+      - rabbitmq
+
+networks:
+  lto:
+    driver: bridge

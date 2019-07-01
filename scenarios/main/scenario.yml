@@ -41,6 +41,10 @@ assets:
           to:
             type: string
             format: date
+      shipment_index:
+        title: Last index number of shipments performed
+        type: integer
+        default: 0
   available:
     title: Available qualtities
     type: object
@@ -117,6 +121,12 @@ actions:
                 current: !ref assets.reserved
                 shipment: !ref current.response.data
               query: "{shipments: current.shipments +`1`, quantity: current.quantity + shipment.quantity}"
+          - select: assets.license
+            data:
+              !apply
+              input:
+                index: !ref assets.license.shipment_index
+              query: "{ shipment_index: index + `1` }"
       deny:
         display: always
         title: !tpl Shipment '{{ current.response.data.reference }}' denied

@@ -1,0 +1,47 @@
+triggers:
+  - schema: https://ilt.livecontracts.io/schemas/sync_license/schema.json#
+    type: event
+    projection: >
+      {
+        body: {
+          "$schema": 'https://specs.livecontracts.io/v0.2.0/response/schema.json#',
+          actor: 'issuer',
+          process: license_process.id,
+          chain: license_process.chain || process.chain
+          action: action,
+          data: shipment
+        }
+      }
+
+hooks:
+  - schema: https://ilt.livecontracts.io/schemas/verify_shipment/schema.json#
+    type: event
+    projection: >
+      {
+        body: {
+          "$schema": 'https://specs.livecontracts.io/v0.2.0/response/schema.json#',
+          actor: 'issuer',
+          process: process.current.response.data.id,
+          chain: process.current.response.data.chain || process.chain
+          action: 'verify',
+          key: determine_response,
+          data: {
+            shipment_index: process.assets.license.shipment_index
+          }
+        }
+      }
+  - schema: https://ilt.livecontracts.io/schemas/sync_license/schema.json#
+    type: http
+    method: POST
+    projection: >
+      {
+        url: process.assets.notification.url,
+        headers: {
+          "x-auth-token": process.assets.notification.auth_token
+        },
+        data: {
+         shipment: shipment,
+         action: action,
+         state: process.current.response.key
+        }
+      }
