@@ -4,6 +4,7 @@
     "actors": {
         "issuer": {
             "title": "Issuer",
+            "name": "Issuer",
             "type": "object",
             "properties": {
                 "name": {
@@ -13,6 +14,7 @@
         },
         "license_holder": {
             "title": "License holder",
+            "name": "License holder",
             "type": "object",
             "properties": {
                 "name": {
@@ -22,6 +24,7 @@
         },
         "transport": {
             "title": "Transport company",
+            "name": "Transport company",
             "type": "object",
             "properties": {
                 "name": {
@@ -31,6 +34,7 @@
         },
         "recipient": {
             "title": "Recipient \/ Treatment facility",
+            "name": "Recipient \/ Treatment facility",
             "type": "object",
             "properties": {
                 "name": {
@@ -40,6 +44,7 @@
         },
         "processor": {
             "title": "Processor \/ Treatment facility",
+            "name": "Processor \/ Treatment facility",
             "type": "object",
             "properties": {
                 "name": {
@@ -265,10 +270,12 @@
     },
     "states": {
         "initial": {
+            "title": "Initial",
             "action": "start",
             "transition": "approval_required"
         },
         "approval_required": {
+            "title": "Verifying shipment",
             "action": "verify",
             "transitions": [
                 {
@@ -286,6 +293,7 @@
             ]
         },
         "ready": {
+            "title": "Shipment ready for transport",
             "actions": [
                 "transport",
                 "cancel"
@@ -302,18 +310,22 @@
             ]
         },
         "transporting": {
+            "title": "Shipment is being transported",
             "actions": "receive",
             "transition": "received"
         },
         "received": {
+            "title": "Shipment received",
             "action": "process",
             "transition": "processed"
         },
         "processed": {
+            "title": "Shipment processed",
             "actions": "complete",
             "transition": ":success"
         },
         "cancelled": {
+            "title": "Shipment cancelled",
             "action": "revert",
             "transition": ":cancelled"
         }
