@@ -4,6 +4,7 @@
     "actors": {
         "issuer": {
             "title": "Issuer",
+            "name": "Issuer",
             "type": "object",
             "properties": {
                 "name": {
@@ -13,6 +14,7 @@
         },
         "license_holder": {
             "title": "License holder",
+            "name": "License holder",
             "type": "object",
             "properties": {
                 "name": {
@@ -105,6 +107,7 @@
     },
     "actions": {
         "issue": {
+            "title": "Issuing license",
             "actor": "issuer",
             "responses": {
                 "ok": {
@@ -126,6 +129,7 @@
             }
         },
         "verify_shipment": {
+            "title": "Verifying shipment",
             "$schema": "https:\/\/ilt.livecontracts.io\/schemas\/verify_shipment\/schema.json#",
             "actor": "issuer",
             "default_response": "approve",
@@ -214,6 +218,7 @@
             }
         },
         "complete_shipment": {
+            "title": "Shipment completed",
             "actor": "issuer",
             "responses": {
                 "ok": {
@@ -275,6 +280,7 @@
             }
         },
         "revert_shipment": {
+            "title": "Shipment cancelled",
             "actor": "issuer",
             "responses": {
                 "ok": {
